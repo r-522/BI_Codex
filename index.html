@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>No-code BI Analyzer</title>
+  <!-- No-code BI Analyzer -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111c33;
+      --panel-soft: #172542;
+      --card: #f8fafc;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-strong: #0284c7;
+      --border: rgba(148, 163, 184, 0.24);
+      --danger: #f97316;
+      --success: #22c55e;
+      --shadow: 0 18px 60px rgba(15, 23, 42, 0.28);
+      font-family: Inter, "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #0f172a 0%, #111827 50%, #082f49 100%);
+      color: var(--text);
+    }
+
+    .app-shell {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      grid-template-rows: auto minmax(0, 1fr) 290px;
+      min-height: 100vh;
+      gap: 14px;
+      padding: 18px;
+    }
+
+    header {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 18px;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: rgba(15, 23, 42, 0.82);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(16px);
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 1.35rem;
+      letter-spacing: 0.02em;
+    }
+
+    .brand p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+      padding: 9px 14px;
+      border-radius: 999px;
+      border: 1px solid rgba(56, 189, 248, 0.34);
+      color: #bae6fd;
+      background: rgba(14, 165, 233, 0.12);
+      font-size: 0.88rem;
+      white-space: nowrap;
+    }
+
+    aside, main, .preview-panel {
+      border: 1px solid var(--border);
+      background: rgba(15, 23, 42, 0.78);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      backdrop-filter: blur(16px);
+    }
+
+    aside {
+      grid-row: 2 / 4;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .panel-section {
+      padding: 18px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .panel-section:last-child {
+      border-bottom: 0;
+    }
+
+    .panel-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .panel-title h2 {
+      margin: 0;
+      font-size: 0.96rem;
+      color: #f8fafc;
+    }
+
+    .hint {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 0.78rem;
+      line-height: 1.5;
+    }
+
+    .file-drop {
+      display: block;
+      padding: 16px;
+      border: 1px dashed rgba(125, 211, 252, 0.5);
+      border-radius: 14px;
+      background: rgba(8, 47, 73, 0.42);
+      cursor: pointer;
+      transition: 0.2s ease;
+    }
+
+    .file-drop:hover {
+      border-color: var(--accent);
+      background: rgba(8, 47, 73, 0.64);
+    }
+
+    input[type="file"] {
+      width: 100%;
+      margin-top: 10px;
+      color: var(--muted);
+    }
+
+    label {
+      display: block;
+      margin: 12px 0 6px;
+      color: #cbd5e1;
+      font-size: 0.82rem;
+      font-weight: 650;
+    }
+
+    select, button {
+      width: 100%;
+      min-height: 40px;
+      border-radius: 10px;
+      border: 1px solid rgba(148, 163, 184, 0.32);
+      background: #0f172a;
+      color: var(--text);
+      padding: 9px 10px;
+      font-size: 0.9rem;
+      outline: none;
+    }
+
+    select:focus, button:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.14);
+    }
+
+    button {
+      margin-top: 14px;
+      border: none;
+      background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+      color: #f8fafc;
+      font-weight: 750;
+      cursor: pointer;
+    }
+
+    button:hover {
+      filter: brightness(1.08);
+    }
+
+    .fields-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 210px;
+      overflow: auto;
+      padding-right: 4px;
+    }
+
+    .field-chip {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 9px 10px;
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      border-radius: 10px;
+      background: rgba(30, 41, 59, 0.7);
+      color: #e5e7eb;
+      font-size: 0.83rem;
+    }
+
+    .field-type {
+      color: #7dd3fc;
+      font-size: 0.74rem;
+    }
+
+    main {
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      min-width: 0;
+    }
+
+    .workspace-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .workspace-header h2 {
+      margin: 0;
+      font-size: 1.05rem;
+    }
+
+    .metric-cards {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(120px, 1fr));
+      gap: 10px;
+      padding: 16px 20px 0;
+    }
+
+    .metric-card {
+      padding: 12px;
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      border-radius: 14px;
+      background: rgba(248, 250, 252, 0.06);
+    }
+
+    .metric-card span {
+      display: block;
+      color: var(--muted);
+      font-size: 0.76rem;
+    }
+
+    .metric-card strong {
+      display: block;
+      margin-top: 4px;
+      font-size: 1.16rem;
+      color: #f8fafc;
+    }
+
+    .chart-wrap {
+      min-height: 360px;
+      padding: 18px 20px 20px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      align-items: stretch;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      min-height: 330px;
+      border-radius: 16px;
+      background: var(--card);
+    }
+
+    .message {
+      display: none;
+      place-items: center;
+      min-height: 330px;
+      border-radius: 16px;
+      background: rgba(248, 250, 252, 0.95);
+      color: #334155;
+      text-align: center;
+      padding: 24px;
+    }
+
+    .result-panel {
+      border-top: 1px solid var(--border);
+      padding: 0 20px 18px;
+      max-height: 250px;
+      overflow: auto;
+    }
+
+    .preview-panel {
+      grid-column: 2 / 3;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      min-height: 0;
+    }
+
+    .preview-header {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .preview-header h2 {
+      margin: 0;
+      font-size: 1rem;
+    }
+
+    .table-scroll {
+      overflow: auto;
+      min-height: 0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      color: #0f172a;
+      background: #f8fafc;
+      font-size: 0.84rem;
+    }
+
+    th, td {
+      padding: 9px 10px;
+      border-bottom: 1px solid #e2e8f0;
+      border-right: 1px solid #e2e8f0;
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: #e0f2fe;
+      color: #0f172a;
+      font-weight: 750;
+    }
+
+    tr:nth-child(even) td {
+      background: #f1f5f9;
+    }
+
+    .empty-state {
+      padding: 22px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .error {
+      margin-top: 10px;
+      color: #fed7aa;
+      font-size: 0.82rem;
+      line-height: 1.45;
+    }
+
+    @media (max-width: 980px) {
+      .app-shell {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto auto auto;
+      }
+
+      aside, .preview-panel {
+        grid-column: 1;
+        grid-row: auto;
+      }
+
+      .metric-cards {
+        grid-template-columns: 1fr;
+      }
+
+      header, .workspace-header, .preview-header {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <header>
+      <div class="brand">
+        <h1>No-code BI Analyzer</h1>
+        <p>CSV / JSON / Excelを読み込み、ピボット集計とチャートをブラウザだけで作成します。</p>
+      </div>
+      <div class="status-pill" id="statusPill">データ未読込</div>
+    </header>
+
+    <aside>
+      <section class="panel-section">
+        <div class="panel-title"><h2>1. データ読込</h2></div>
+        <label class="file-drop" for="fileInput">
+          CSV、JSON、Excel（.xlsx/.xls）を選択
+          <input id="fileInput" type="file" accept=".csv,.json,.xlsx,.xls,text/csv,application/json">
+        </label>
+        <p class="hint">Excel読込にはSheetJS CDNを利用します。完全オフラインではCSVまたはJSONを使用してください。</p>
+        <div class="error" id="errorBox"></div>
+      </section>
+
+      <section class="panel-section">
+        <div class="panel-title"><h2>2. フィールド一覧</h2><span id="fieldCount" class="hint">0</span></div>
+        <div class="fields-list" id="fieldsList">
+          <div class="empty-state">ファイルを読み込むと列名が表示されます。</div>
+        </div>
+      </section>
+
+      <section class="panel-section">
+        <div class="panel-title"><h2>3. 分析設定</h2></div>
+        <label for="rowDimension">行ディメンション</label>
+        <select id="rowDimension"></select>
+
+        <label for="columnDimension">列ディメンション / カテゴリ</label>
+        <select id="columnDimension"></select>
+
+        <label for="measureField">集計対象メジャー</label>
+        <select id="measureField"></select>
+
+        <label for="aggregation">集計方法</label>
+        <select id="aggregation">
+          <option value="sum">合計</option>
+          <option value="avg">平均</option>
+          <option value="count">件数</option>
+          <option value="max">最大</option>
+          <option value="min">最小</option>
+        </select>
+
+        <label for="chartType">グラフ種別</label>
+        <select id="chartType">
+          <option value="bar">棒グラフ</option>
+          <option value="line">折れ線グラフ</option>
+          <option value="pie">円グラフ</option>
+          <option value="table">テーブル</option>
+        </select>
+
+        <button id="refreshButton" type="button">集計を更新</button>
+      </section>
+    </aside>
+
+    <main>
+      <div class="workspace-header">
+        <div>
+          <h2>分析ビュー</h2>
+          <p class="hint" id="analysisSubtitle">ディメンション、メジャー、集計方法を選ぶと自動で更新されます。</p>
+        </div>
+        <div class="status-pill" id="chartStatus">待機中</div>
+      </div>
+
+      <div class="metric-cards">
+        <div class="metric-card"><span>行数</span><strong id="rowCount">0</strong></div>
+        <div class="metric-card"><span>列数</span><strong id="columnCount">0</strong></div>
+        <div class="metric-card"><span>集計セル</span><strong id="pivotCellCount">0</strong></div>
+      </div>
+
+      <div class="chart-wrap">
+        <canvas id="chartCanvas" aria-label="BI chart"></canvas>
+        <div class="message" id="tableOnlyMessage">テーブル表示を選択中です。下の集計表をご確認ください。</div>
+      </div>
+
+      <div class="result-panel">
+        <div class="preview-header" style="padding-left:0;padding-right:0;">
+          <h2>集計表</h2>
+          <span class="hint" id="resultInfo">結果なし</span>
+        </div>
+        <div class="table-scroll" id="resultTable"></div>
+      </div>
+    </main>
+
+    <section class="preview-panel">
+      <div class="preview-header">
+        <h2>データプレビュー</h2>
+        <span class="hint" id="previewInfo">先頭100行を表示</span>
+      </div>
+      <div class="table-scroll" id="previewTable">
+        <div class="empty-state">CSV、JSON、またはExcelファイルをアップロードしてください。</div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const state = {
+      rows: [],
+      columns: [],
+      pivot: null,
+      fileName: ''
+    };
+
+    const palette = ['#0284c7', '#16a34a', '#f97316', '#9333ea', '#dc2626', '#0891b2', '#ca8a04', '#4f46e5', '#be123c', '#0f766e'];
+
+    const els = {
+      fileInput: document.getElementById('fileInput'),
+      errorBox: document.getElementById('errorBox'),
+      statusPill: document.getElementById('statusPill'),
+      chartStatus: document.getElementById('chartStatus'),
+      fieldsList: document.getElementById('fieldsList'),
+      fieldCount: document.getElementById('fieldCount'),
+      rowDimension: document.getElementById('rowDimension'),
+      columnDimension: document.getElementById('columnDimension'),
+      measureField: document.getElementById('measureField'),
+      aggregation: document.getElementById('aggregation'),
+      chartType: document.getElementById('chartType'),
+      refreshButton: document.getElementById('refreshButton'),
+      rowCount: document.getElementById('rowCount'),
+      columnCount: document.getElementById('columnCount'),
+      pivotCellCount: document.getElementById('pivotCellCount'),
+      analysisSubtitle: document.getElementById('analysisSubtitle'),
+      chartCanvas: document.getElementById('chartCanvas'),
+      tableOnlyMessage: document.getElementById('tableOnlyMessage'),
+      resultTable: document.getElementById('resultTable'),
+      resultInfo: document.getElementById('resultInfo'),
+      previewTable: document.getElementById('previewTable'),
+      previewInfo: document.getElementById('previewInfo')
+    };
+
+    els.fileInput.addEventListener('change', handleFileSelect);
+    [els.rowDimension, els.columnDimension, els.measureField, els.aggregation, els.chartType].forEach((control) => {
+      control.addEventListener('change', updateAnalysis);
+    });
+    els.refreshButton.addEventListener('click', updateAnalysis);
+    window.addEventListener('resize', () => state.pivot && renderChart(state.pivot));
+
+    initializeEmptySelects();
+
+    function initializeEmptySelects() {
+      fillSelect(els.rowDimension, [], 'データ読込後に選択');
+      fillSelect(els.columnDimension, [], 'なし');
+      fillSelect(els.measureField, [], '件数のみ');
+    }
+
+    async function handleFileSelect(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      clearError();
+      state.fileName = file.name;
+      try {
+        const extension = file.name.split('.').pop().toLowerCase();
+        let parsedRows;
+        if (extension === 'json') {
+          parsedRows = parseJson(await file.text());
+        } else if (extension === 'xlsx' || extension === 'xls') {
+          parsedRows = await parseExcel(file);
+        } else {
+          parsedRows = parseCsv(await file.text());
+        }
+        loadRows(parsedRows);
+      } catch (error) {
+        showError(error.message || 'ファイルの読込に失敗しました。');
+      }
+    }
+
+    function parseCsv(text) {
+      const delimiter = detectDelimiter(text);
+      const rows = [];
+      let current = '';
+      let row = [];
+      let inQuotes = false;
+
+      for (let i = 0; i < text.length; i += 1) {
+        const char = text[i];
+        const next = text[i + 1];
+        if (char === '"' && inQuotes && next === '"') {
+          current += '"';
+          i += 1;
+        } else if (char === '"') {
+          inQuotes = !inQuotes;
+        } else if (char === delimiter && !inQuotes) {
+          row.push(current.trim());
+          current = '';
+        } else if ((char === '\n' || char === '\r') && !inQuotes) {
+          if (char === '\r' && next === '\n') i += 1;
+          row.push(current.trim());
+          if (row.some((value) => value !== '')) rows.push(row);
+          row = [];
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      row.push(current.trim());
+      if (row.some((value) => value !== '')) rows.push(row);
+      if (rows.length < 2) throw new Error('CSVにはヘッダー行とデータ行が必要です。');
+
+      const headers = dedupeHeaders(rows[0].map((header, index) => header || `Column ${index + 1}`));
+      return rows.slice(1).map((values) => {
+        const item = {};
+        headers.forEach((header, index) => {
+          item[header] = values[index] ?? '';
+        });
+        return item;
+      });
+    }
+
+    function detectDelimiter(text) {
+      const firstLine = text.split(/\r?\n/).find(Boolean) || '';
+      const candidates = [',', '\t', ';', '|'];
+      return candidates.reduce((best, candidate) => {
+        const count = firstLine.split(candidate).length;
+        return count > best.count ? { delimiter: candidate, count } : best;
+      }, { delimiter: ',', count: 0 }).delimiter;
+    }
+
+    function parseJson(text) {
+      const data = JSON.parse(text);
+      if (!Array.isArray(data)) throw new Error('JSONは配列オブジェクト形式にしてください。');
+      return data.map((item, index) => {
+        if (item === null || typeof item !== 'object' || Array.isArray(item)) {
+          return { index: index + 1, value: item };
+        }
+        return flattenObject(item);
+      });
+    }
+
+    async function parseExcel(file) {
+      if (!window.XLSX) {
+        throw new Error('Excel読込ライブラリを取得できません。CSVまたはJSONを使用してください。');
+      }
+      const buffer = await file.arrayBuffer();
+      const workbook = window.XLSX.read(buffer, { type: 'array' });
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+      return window.XLSX.utils.sheet_to_json(firstSheet, { defval: '' }).map(flattenObject);
+    }
+
+    function flattenObject(input, prefix = '', output = {}) {
+      Object.entries(input).forEach(([key, value]) => {
+        const field = prefix ? `${prefix}.${key}` : key;
+        if (value && typeof value === 'object' && !Array.isArray(value) && !(value instanceof Date)) {
+          flattenObject(value, field, output);
+        } else {
+          output[field] = Array.isArray(value) ? value.join(', ') : value;
+        }
+      });
+      return output;
+    }
+
+    function dedupeHeaders(headers) {
+      const seen = new Map();
+      return headers.map((header) => {
+        const count = seen.get(header) || 0;
+        seen.set(header, count + 1);
+        return count ? `${header}_${count + 1}` : header;
+      });
+    }
+
+    function loadRows(rows) {
+      if (!rows.length) throw new Error('データ行が見つかりません。');
+      const columns = Array.from(rows.reduce((set, row) => {
+        Object.keys(row).forEach((key) => set.add(key));
+        return set;
+      }, new Set()));
+      state.rows = rows;
+      state.columns = columns;
+      renderFieldList();
+      populateControls();
+      renderPreviewTable();
+      els.rowCount.textContent = rows.length.toLocaleString('ja-JP');
+      els.columnCount.textContent = columns.length.toLocaleString('ja-JP');
+      els.statusPill.textContent = `${state.fileName} 読込済み`;
+      updateAnalysis();
+    }
+
+    function renderFieldList() {
+      els.fieldCount.textContent = `${state.columns.length} 列`;
+      els.fieldsList.innerHTML = state.columns.map((column) => {
+        const type = inferType(column);
+        return `<div class="field-chip"><span>${escapeHtml(column)}</span><span class="field-type">${type}</span></div>`;
+      }).join('');
+    }
+
+    function inferType(column) {
+      const sample = state.rows.slice(0, 30).map((row) => row[column]).filter((value) => value !== '' && value !== null && value !== undefined);
+      if (!sample.length) return 'empty';
+      return sample.every((value) => Number.isFinite(toNumber(value))) ? 'number' : 'text';
+    }
+
+    function populateControls() {
+      const numericColumns = state.columns.filter((column) => inferType(column) === 'number');
+      fillSelect(els.rowDimension, state.columns, '選択してください');
+      fillSelect(els.columnDimension, state.columns, 'なし');
+      fillSelect(els.measureField, numericColumns.length ? numericColumns : state.columns, '件数のみ');
+
+      els.rowDimension.value = state.columns[0] || '';
+      els.columnDimension.value = state.columns[1] || '';
+      if (numericColumns.length) els.measureField.value = numericColumns[0];
+    }
+
+    function fillSelect(select, values, emptyLabel) {
+      select.innerHTML = `<option value="">${escapeHtml(emptyLabel)}</option>` + values.map((value) => (
+        `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`
+      )).join('');
+    }
+
+    function updateAnalysis() {
+      if (!state.rows.length || !els.rowDimension.value) {
+        clearCanvas('ファイルを読み込み、行ディメンションを選択してください。');
+        return;
+      }
+      const pivot = buildPivot();
+      state.pivot = pivot;
+      renderResultTable(pivot);
+      renderChart(pivot);
+      const aggLabel = els.aggregation.options[els.aggregation.selectedIndex].text;
+      const measureLabel = els.aggregation.value === 'count' ? '件数' : (els.measureField.value || '件数');
+      els.analysisSubtitle.textContent = `${els.rowDimension.value} × ${els.columnDimension.value || '全体'} / ${measureLabel} の ${aggLabel}`;
+      els.chartStatus.textContent = `${pivot.rowKeys.length} 行 × ${pivot.columnKeys.length} 列`;
+      els.pivotCellCount.textContent = (pivot.rowKeys.length * pivot.columnKeys.length).toLocaleString('ja-JP');
+    }
+
+    function buildPivot() {
+      const rowField = els.rowDimension.value;
+      const columnField = els.columnDimension.value;
+      const measureField = els.measureField.value;
+      const aggregation = els.aggregation.value;
+      const bucket = new Map();
+      const columnSet = new Set();
+
+      state.rows.forEach((row) => {
+        const rowKey = stringifyValue(row[rowField]) || '(空白)';
+        const columnKey = columnField ? (stringifyValue(row[columnField]) || '(空白)') : '合計';
+        const key = `${rowKey}\u0000${columnKey}`;
+        columnSet.add(columnKey);
+        if (!bucket.has(key)) bucket.set(key, { values: [], count: 0 });
+        const cell = bucket.get(key);
+        cell.count += 1;
+        if (aggregation !== 'count') {
+          const number = toNumber(row[measureField]);
+          if (Number.isFinite(number)) cell.values.push(number);
+        }
+      });
+
+      const rowKeys = Array.from(new Set(Array.from(bucket.keys()).map((key) => key.split('\u0000')[0])));
+      const columnKeys = Array.from(columnSet);
+      const matrix = rowKeys.map((rowKey) => columnKeys.map((columnKey) => {
+        const cell = bucket.get(`${rowKey}\u0000${columnKey}`) || { values: [], count: 0 };
+        return aggregateCell(cell, aggregation);
+      }));
+      return { rowKeys, columnKeys, matrix };
+    }
+
+    function aggregateCell(cell, aggregation) {
+      if (aggregation === 'count') return cell.count;
+      if (!cell.values.length) return 0;
+      if (aggregation === 'sum') return cell.values.reduce((sum, value) => sum + value, 0);
+      if (aggregation === 'avg') return cell.values.reduce((sum, value) => sum + value, 0) / cell.values.length;
+      if (aggregation === 'max') return Math.max(...cell.values);
+      if (aggregation === 'min') return Math.min(...cell.values);
+      return 0;
+    }
+
+    function renderPreviewTable() {
+      els.previewInfo.textContent = `先頭${Math.min(100, state.rows.length)}行 / 全${state.rows.length.toLocaleString('ja-JP')}行`;
+      els.previewTable.innerHTML = buildHtmlTable(state.columns, state.rows.slice(0, 100).map((row) => state.columns.map((column) => row[column])));
+    }
+
+    function renderResultTable(pivot) {
+      const headers = [els.rowDimension.value, ...pivot.columnKeys, '行合計'];
+      const rows = pivot.rowKeys.map((rowKey, rowIndex) => {
+        const values = pivot.matrix[rowIndex];
+        const total = values.reduce((sum, value) => sum + value, 0);
+        return [rowKey, ...values.map(formatNumber), formatNumber(total)];
+      });
+      els.resultTable.innerHTML = buildHtmlTable(headers, rows);
+      els.resultInfo.textContent = `${rows.length.toLocaleString('ja-JP')} グループ`;
+    }
+
+    function buildHtmlTable(headers, rows) {
+      if (!rows.length) return '<div class="empty-state">表示するデータがありません。</div>';
+      return `<table><thead><tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join('')}</tr></thead><tbody>${rows.map((row) => (
+        `<tr>${row.map((value) => `<td>${escapeHtml(formatValue(value))}</td>`).join('')}</tr>`
+      )).join('')}</tbody></table>`;
+    }
+
+    function renderChart(pivot) {
+      const type = els.chartType.value;
+      const canvas = els.chartCanvas;
+      const message = els.tableOnlyMessage;
+      if (type === 'table') {
+        canvas.style.display = 'none';
+        message.style.display = 'grid';
+        return;
+      }
+      canvas.style.display = 'block';
+      message.style.display = 'none';
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = Math.max(600, Math.floor(rect.width * window.devicePixelRatio));
+      canvas.height = Math.max(330, Math.floor(rect.height * window.devicePixelRatio));
+      const ctx = canvas.getContext('2d');
+      ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+      const width = canvas.width / window.devicePixelRatio;
+      const height = canvas.height / window.devicePixelRatio;
+      ctx.clearRect(0, 0, width, height);
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillRect(0, 0, width, height);
+
+      const series = compactSeries(pivot);
+      if (!series.length) {
+        drawCenteredText(ctx, width, height, '表示できる集計結果がありません。');
+        return;
+      }
+      if (type === 'pie') drawPie(ctx, width, height, series);
+      if (type === 'bar') drawBar(ctx, width, height, series);
+      if (type === 'line') drawLine(ctx, width, height, series);
+    }
+
+    function compactSeries(pivot) {
+      return pivot.rowKeys.map((rowKey, index) => ({
+        label: rowKey,
+        value: pivot.matrix[index].reduce((sum, value) => sum + value, 0)
+      })).filter((item) => Number.isFinite(item.value)).sort((a, b) => b.value - a.value).slice(0, 20);
+    }
+
+    function drawBar(ctx, width, height, series) {
+      const margin = { top: 28, right: 24, bottom: 86, left: 72 };
+      const chartWidth = width - margin.left - margin.right;
+      const chartHeight = height - margin.top - margin.bottom;
+      const max = Math.max(...series.map((item) => item.value), 1);
+      drawAxes(ctx, margin, chartWidth, chartHeight, max);
+      const gap = 8;
+      const barWidth = Math.max(10, (chartWidth - gap * (series.length - 1)) / series.length);
+      series.forEach((item, index) => {
+        const barHeight = chartHeight * (item.value / max);
+        const x = margin.left + index * (barWidth + gap);
+        const y = margin.top + chartHeight - barHeight;
+        ctx.fillStyle = palette[index % palette.length];
+        ctx.fillRect(x, y, barWidth, barHeight);
+        drawRotatedLabel(ctx, item.label, x + barWidth / 2, height - 28);
+      });
+    }
+
+    function drawLine(ctx, width, height, series) {
+      const ordered = [...series].reverse();
+      const margin = { top: 28, right: 24, bottom: 86, left: 72 };
+      const chartWidth = width - margin.left - margin.right;
+      const chartHeight = height - margin.top - margin.bottom;
+      const max = Math.max(...ordered.map((item) => item.value), 1);
+      drawAxes(ctx, margin, chartWidth, chartHeight, max);
+      ctx.strokeStyle = '#0284c7';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ordered.forEach((item, index) => {
+        const x = margin.left + (ordered.length === 1 ? chartWidth / 2 : (chartWidth / (ordered.length - 1)) * index);
+        const y = margin.top + chartHeight - chartHeight * (item.value / max);
+        if (index === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+      ordered.forEach((item, index) => {
+        const x = margin.left + (ordered.length === 1 ? chartWidth / 2 : (chartWidth / (ordered.length - 1)) * index);
+        const y = margin.top + chartHeight - chartHeight * (item.value / max);
+        ctx.fillStyle = '#0284c7';
+        ctx.beginPath();
+        ctx.arc(x, y, 4.5, 0, Math.PI * 2);
+        ctx.fill();
+        drawRotatedLabel(ctx, item.label, x, height - 28);
+      });
+    }
+
+    function drawPie(ctx, width, height, series) {
+      const total = series.reduce((sum, item) => sum + Math.max(0, item.value), 0);
+      if (total <= 0) {
+        drawCenteredText(ctx, width, height, '円グラフは正の値が必要です。');
+        return;
+      }
+      const radius = Math.min(width, height) * 0.31;
+      const cx = width * 0.38;
+      const cy = height * 0.5;
+      let start = -Math.PI / 2;
+      series.forEach((item, index) => {
+        const angle = (Math.max(0, item.value) / total) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.arc(cx, cy, radius, start, start + angle);
+        ctx.closePath();
+        ctx.fillStyle = palette[index % palette.length];
+        ctx.fill();
+        start += angle;
+      });
+      const legendX = width * 0.68;
+      series.slice(0, 10).forEach((item, index) => {
+        const y = 42 + index * 26;
+        ctx.fillStyle = palette[index % palette.length];
+        ctx.fillRect(legendX, y - 10, 14, 14);
+        ctx.fillStyle = '#0f172a';
+        ctx.font = '12px sans-serif';
+        ctx.fillText(`${truncate(item.label, 18)} (${formatNumber(item.value)})`, legendX + 22, y + 2);
+      });
+    }
+
+    function drawAxes(ctx, margin, chartWidth, chartHeight, max) {
+      ctx.strokeStyle = '#cbd5e1';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(margin.left, margin.top);
+      ctx.lineTo(margin.left, margin.top + chartHeight);
+      ctx.lineTo(margin.left + chartWidth, margin.top + chartHeight);
+      ctx.stroke();
+      ctx.fillStyle = '#475569';
+      ctx.font = '12px sans-serif';
+      for (let i = 0; i <= 4; i += 1) {
+        const value = (max / 4) * i;
+        const y = margin.top + chartHeight - (chartHeight / 4) * i;
+        ctx.fillText(formatNumber(value), 8, y + 4);
+        ctx.strokeStyle = '#e2e8f0';
+        ctx.beginPath();
+        ctx.moveTo(margin.left, y);
+        ctx.lineTo(margin.left + chartWidth, y);
+        ctx.stroke();
+      }
+    }
+
+    function drawRotatedLabel(ctx, text, x, y) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(-Math.PI / 5);
+      ctx.fillStyle = '#334155';
+      ctx.font = '11px sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText(truncate(text, 16), 0, 0);
+      ctx.restore();
+    }
+
+    function drawCenteredText(ctx, width, height, text) {
+      ctx.fillStyle = '#334155';
+      ctx.font = '16px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(text, width / 2, height / 2);
+    }
+
+    function clearCanvas(message) {
+      const ctx = els.chartCanvas.getContext('2d');
+      const width = els.chartCanvas.width || 900;
+      const height = els.chartCanvas.height || 360;
+      ctx.clearRect(0, 0, width, height);
+      els.chartStatus.textContent = message;
+    }
+
+    function toNumber(value) {
+      if (typeof value === 'number') return value;
+      if (value === null || value === undefined || value === '') return NaN;
+      return Number(String(value).replace(/,/g, ''));
+    }
+
+    function stringifyValue(value) {
+      if (value === null || value === undefined) return '';
+      return String(value).trim();
+    }
+
+    function formatNumber(value) {
+      return Number(value).toLocaleString('ja-JP', { maximumFractionDigits: 2 });
+    }
+
+    function formatValue(value) {
+      if (typeof value === 'number' && Number.isFinite(value)) return formatNumber(value);
+      if (value === null || value === undefined) return '';
+      return String(value);
+    }
+
+    function escapeHtml(value) {
+      return formatValue(value).replace(/[&<>'"]/g, (char) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        "'": '&#39;',
+        '"': '&quot;'
+      }[char]));
+    }
+
+    function truncate(value, length) {
+      const text = String(value);
+      return text.length > length ? `${text.slice(0, length - 1)}…` : text;
+    }
+
+    function showError(message) {
+      els.errorBox.textContent = message;
+      els.statusPill.textContent = '読込エラー';
+    }
+
+    function clearError() {
+      els.errorBox.textContent = '';
+    }
+  </script>
+</body>
+</html>
